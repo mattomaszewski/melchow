@@ -3,47 +3,787 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Melchow Station Finder</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <title>Live Departures & Arrivals - Melchow Station</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DB Screen Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #1a237e;
+            min-height: 100vh;
+            color: white;
+            font-weight: 300;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #1a237e;
+            padding: 30px;
+            border-bottom: 3px solid #ffffff20;
+            flex-shrink: 0;
+        }
+        
+        .time-display {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            font-size: 1.8rem;
+            font-weight: 400;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 2px solid white;
+        }
+        
+        .station-name {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 300;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+        
+        .controls {
+            background: #1a237e;
+            padding: 20px 30px;
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid #ffffff20;
+            flex-shrink: 0;
+            align-items: center;
+        }
+        
+        .segmented-control {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        
+        .segment-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 400;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .segment-btn:last-child {
+            border-right: none;
+        }
+        
+        .segment-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .segment-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        
+        .controls-left {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 400;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn.active {
+            background: #dc143c;
+            border-color: #dc143c;
+        }
+        
+        .icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        
+        .status {
+            background: #1a237e;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #ffffff20;
+            flex-shrink: 0;
+        }
+        
+        .departures-container {
+            background: #1a237e;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .departure-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            padding: 25px 30px;
+            border-bottom: 1px solid #ffffff15;
+            transition: background 0.2s ease;
+            align-items: center;
+            gap: 20px;
+            min-height: 80px;
+        }
+        
+        .departure-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .line-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
+        }
+        
+        .line-badge {
+            background: #dc143c;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1rem;
+            min-width: 55px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        
+        .line-badge.s-bahn {
+            background: #4caf50;
+        }
+        
+        .line-badge.regional {
+            background: #2196f3;
+        }
+        
+        .line-badge.bus {
+            background: #9c27b0;
+        }
+        
+        .destination-info {
+            min-width: 0;
+        }
+        
+        .destination {
+            font-size: 2.2rem;
+            font-weight: 300;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .platform-info {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .time-info {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        
+        .departure-time {
+            font-size: 2.8rem;
+            font-weight: 300;
+            line-height: 1;
+        }
+        
+        .time-suffix {
+            font-size: 1.4rem;
+            opacity: 0.8;
+            margin-left: 8px;
+        }
+        
+        .delay-info {
+            font-size: 1.2rem;
+            margin-top: 5px;
+        }
+        
+        .delay-info.on-time {
+            color: #4caf50;
+        }
+        
+        .delay-info.delayed {
+            color: #ff5722;
+            font-weight: 500;
+        }
+        
+        .in-minutes {
+            font-size: 1.8rem;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+        
+        .from-origin {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 80px 30px;
+            font-size: 1.5rem;
+            opacity: 0.7;
+        }
+        
+        .loading-more {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.1rem;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .last-update {
+            background: #1a237e;
+            text-align: center;
+            padding: 20px;
+            opacity: 0.6;
+            font-size: 0.9rem;
+            border-top: 1px solid #ffffff15;
+            flex-shrink: 0;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 15px 20px;
+            }
+            
+            .time-display {
+                position: relative;
+                top: auto;
+                left: auto;
+                font-size: 1.3rem;
+                padding: 6px 12px;
+                margin-bottom: 15px;
+                display: inline-block;
+            }
+            
+            .station-name {
+                font-size: 2rem;
+                margin-top: 10px;
+            }
+            
+            .controls {
+                padding: 12px 20px;
+                gap: 8px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .controls-left {
+                display: flex;
+                gap: 8px;
+                order: 2;
+            }
+            
+            .segmented-control {
+                order: 1;
+                margin-bottom: 10px;
+            }
+            
+            .segment-btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+                flex: 1;
+            }
+            
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                gap: 6px;
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            .icon {
+                width: 14px;
+                height: 14px;
+            }
+            
+            .status {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            
+            .departure-item {
+                grid-template-columns: auto 1fr auto;
+                padding: 10px 15px;
+                gap: 10px;
+                min-height: 60px;
+            }
+            
+            .line-badge {
+                padding: 4px 8px;
+                font-size: 0.8rem;
+                min-width: 40px;
+                border-radius: 15px;
+            }
+            
+            .line-info {
+                gap: 8px;
+            }
+            
+            .destination {
+                font-size: 1.1rem;
+                line-height: 1.2;
+            }
+            
+            .platform-info {
+                font-size: 0.8rem;
+                margin-top: 2px;
+            }
+            
+            .departure-time {
+                font-size: 1.4rem;
+                line-height: 1;
+            }
+            
+            .time-suffix {
+                font-size: 0.8rem;
+                margin-left: 3px;
+            }
+            
+            .delay-info {
+                font-size: 0.8rem;
+                margin-top: 2px;
+            }
+            
+            .in-minutes {
+                font-size: 0.9rem;
+                margin-top: 2px;
+            }
+            
+            .last-update {
+                padding: 12px;
+                font-size: 0.8rem;
+            }
+            
+            .no-data {
+                padding: 40px 20px;
+                font-size: 1.2rem;
+            }
+            
+            .loading-more {
+                padding: 15px;
+                font-size: 1rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Station Search</h1>
-        <input type="text" id="station-search" placeholder="Search for a station..." autocomplete="off">
-        <ul id="suggestions"></ul>
-    </header>
-    <main>
-        <div id="departures">
-            <!-- Live departures will be shown here -->
+    <div class="container">
+        <div class="header">
+            <div class="time-display" id="currentTime">15:09 Uhr</div>
+            <div class="station-name">Melchow</div>
         </div>
-    </main>
+        
+        <div class="controls">
+            <div class="segmented-control">
+                <button class="segment-btn active" onclick="switchMode('departures')" id="departuresTab">Abfahrten</button>
+                <button class="segment-btn" onclick="switchMode('arrivals')" id="arrivalsTab">Ankünfte</button>
+            </div>
+            
+            <div class="controls-left">
+                <button class="btn" onclick="refreshData()">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                    </svg>
+                    Aktualisieren
+                </button>
+                <button class="btn" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    Auto: AUS
+                </button>
+            </div>
+        </div>
+        
+        <div class="status" id="status">
+            Klicken Sie auf "Aktualisieren" für Live-Abfahrten
+        </div>
+        
+        <div class="departures-container" id="dataContainer">
+            <div id="data-list">
+                <div class="no-data">
+                    Noch keine Abfahrtsdaten geladen.<br>Klicken Sie auf "Aktualisieren" für Live-Informationen.
+                </div>
+            </div>
+            <div class="loading-more" id="loadingMore" style="display: none;">
+                <div class="loading"></div>
+                <span id="loadingText">Lade weitere Abfahrten...</span>
+            </div>
+        </div>
+        
+        <div class="last-update" id="lastUpdate"></div>
+    </div>
+
     <script>
-        $(document).ready(function() {
-            $('#station-search').on('input', function() {
-                const query = $(this).val();
-                if (query.length > 2) {
-                    $.get(`https://v6.vbb.transport.rest/locations?query=${query}&results=5`, function(data) {
-                        $('#suggestions').empty();
-                        data.forEach(function(station) {
-                            $('#suggestions').append(`<li data-id="${station.id}">${station.name}</li>`);
-                        });
-                    });
-                }
+        let autoRefreshInterval = null;
+        let isAutoRefreshOn = false;
+        let currentData = [];
+        let isLoading = false;
+        let hasMoreData = true;
+        let currentStationId = null;
+        let currentMode = 'departures'; // 'departures' or 'arrivals'
+        
+        // Update current time display
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('de-DE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                }) + ' Uhr';
+        }
+        
+        // Function to format time
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('de-DE', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
             });
-
-            $('#suggestions').on('click', 'li', function() {
-                const stationId = $(this).data('id');
-                const stationName = $(this).text();
-                $('#station-search').val(stationName);
-                $('#suggestions').empty();
-                // Fetch and display live departures/arrivals for the selected station
-                fetchDepartures(stationId);
-            });
-
-            function fetchDepartures(stationId) {
-                // Here you would implement the logic to fetch and display departures/arrivals
+        }
+        
+        // Function to calculate minutes until departure/arrival
+        function getMinutesUntil(dateString) {
+            const now = new Date();
+            const time = new Date(dateString);
+            const diffMinutes = Math.round((time - now) / 60000);
+            return diffMinutes;
+        }
+        
+        // Function to determine line type and color
+        function getLineType(lineName) {
+            if (lineName.startsWith('S')) return 's-bahn';
+            if (lineName.startsWith('RE') || lineName.startsWith('RB')) return 'regional';
+            if (lineName.includes('Bus')) return 'bus';
+            return 'default';
+        }
+        
+        // Function to calculate delay
+        function getDelayInfo(scheduled, realtime) {
+            if (!realtime || !scheduled) {
+                return { text: 'pünktlich', class: 'on-time' };
             }
+            
+            const scheduledTime = new Date(scheduled);
+            const realtimeTime = new Date(realtime);
+            const delayMinutes = Math.round((realtimeTime - scheduledTime) / 60000);
+            
+            if (delayMinutes <= 0) {
+                return { text: 'pünktlich', class: 'on-time' };
+            } else {
+                return { text: `+${delayMinutes} Min`, class: 'delayed' };
+            }
+        }
+        
+        // Function to switch between departures and arrivals
+        function switchMode(mode) {
+            if (mode === currentMode) return;
+            
+            currentMode = mode;
+            currentData = [];
+            hasMoreData = true;
+            
+            // Update tab buttons
+            document.getElementById('departuresTab').classList.toggle('active', mode === 'departures');
+            document.getElementById('arrivalsTab').classList.toggle('active', mode === 'arrivals');
+            
+            // Update loading text
+            const loadingText = document.getElementById('loadingText');
+            loadingText.textContent = mode === 'departures' ? 'Lade weitere Abfahrten...' : 'Lade weitere Ankünfte...';
+            
+            // Update status message
+            const statusElement = document.getElementById('status');
+            const modeText = mode === 'departures' ? 'Abfahrten' : 'Ankünfte';
+            statusElement.innerHTML = `Klicken Sie auf "Aktualisieren" für Live-${modeText}`;
+            
+            // Clear current data
+            const dataList = document.getElementById('data-list');
+            dataList.innerHTML = `<div class="no-data">Noch keine ${modeText.toLowerCase()} geladen.<br>Klicken Sie auf "Aktualisieren" für Live-Informationen.</div>`;
+            
+            // Refresh data if we have a station
+            if (currentStationId) {
+                refreshData();
+            }
+        }
+        
+        // Function to create departure item HTML
+        function createDepartureItem(item) {
+            const delayInfo = getDelayInfo(item.plannedWhen, item.when);
+            const time = formatTime(item.when || item.plannedWhen);
+            const minutesUntil = getMinutesUntil(item.when || item.plannedWhen);
+            const lineType = getLineType(item.line ? item.line.name : 'Unbekannt');
+            
+            let destination, line, platform, originInfo = '';
+            
+            if (currentMode === 'departures') {
+                destination = item.destination ? item.destination.name : 'Unbekannt';
+                line = item.line ? item.line.name : 'Unbekannt';
+                platform = item.platform ? `Gleis ${item.platform}` : '';
+            } else {
+                // For arrivals, show origin instead of destination
+                destination = item.origin ? item.origin.name : 'Unbekannt';
+                line = item.line ? item.line.name : 'Unbekannt';
+                platform = item.platform ? `Gleis ${item.platform}` : '';
+                originInfo = `<div class="from-origin">von ${destination}</div>`;
+            }
+            
+            const itemElement = document.createElement('div');
+            itemElement.className = 'departure-item';
+            itemElement.innerHTML = `
+                <div class="line-info">
+                    <div class="line-badge ${lineType}">${line}</div>
+                </div>
+                <div class="destination-info">
+                    <div class="destination">${currentMode === 'departures' ? destination : line}</div>
+                    ${currentMode === 'arrivals' ? originInfo : ''}
+                    ${platform ? `<div class="platform-info">${platform}</div>` : ''}
+                </div>
+                <div class="time-info">
+                    <div class="departure-time">${time}<span class="time-suffix">Uhr</span></div>
+                    <div class="delay-info ${delayInfo.class}">${delayInfo.text}</div>
+                    ${minutesUntil > 0 ? `<div class="in-minutes">in ${minutesUntil} Min</div>` : 
+                      minutesUntil === 0 ? `<div class="in-minutes">jetzt</div>` : ''}
+                </div>
+            `;
+            return itemElement;
+        }
+        
+        // Function to load more data
+        async function loadMoreData() {
+            if (isLoading || !hasMoreData || !currentStationId) return;
+            
+            isLoading = true;
+            const loadingMore = document.getElementById('loadingMore');
+            loadingMore.style.display = 'flex';
+            
+            try {
+                const duration = 360 + (currentData.length * 60);
+                const endpoint = currentMode === 'departures' ? 'departures' : 'arrivals';
+                const response = await fetch(`https://v6.vbb.transport.rest/stops/${currentStationId}/${endpoint}?duration=${duration}&results=${currentData.length + 10}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Fehler! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const items = currentMode === 'departures' ? data.departures : data.arrivals;
+                
+                if (items && items.length > currentData.length) {
+                    const newItems = items.slice(currentData.length);
+                    const dataList = document.getElementById('data-list');
+                    
+                    newItems.forEach(item => {
+                        const itemElement = createDepartureItem(item);
+                        dataList.appendChild(itemElement);
+                        currentData.push(item);
+                    });
+                    
+                    if (newItems.length < 10) {
+                        hasMoreData = false;
+                    }
+                } else {
+                    hasMoreData = false;
+                }
+                
+            } catch (error) {
+                console.error(`Error loading more ${currentMode}:`, error);
+            }
+            
+            isLoading = false;
+            loadingMore.style.display = 'none';
+        }
+        
+        // Function to refresh data (departures or arrivals)
+        async function refreshData() {
+            const statusElement = document.getElementById('status');
+            const dataList = document.getElementById('data-list');
+            const modeText = currentMode === 'departures' ? 'Abfahrten' : 'Ankünfte';
+            
+            statusElement.innerHTML = `<div class="loading"></div>Lade ${modeText}...`;
+            currentData = [];
+            hasMoreData = true;
+            
+            try {
+                // If we don't have station ID, get it first
+                if (!currentStationId) {
+                    const stationResponse = await fetch(`https://v6.vbb.transport.rest/locations?query=Melchow&results=5`);
+                    
+                    if (!stationResponse.ok) {
+                        throw new Error('Bahnhof nicht gefunden');
+                    }
+                    
+                    const stations = await stationResponse.json();
+                    
+                    if (!stations || stations.length === 0) {
+                        throw new Error('Melchow Bahnhof nicht gefunden');
+                    }
+                    
+                    const melchowStation = stations.find(station => 
+                        station.name.toLowerCase().includes('melchow')
+                    ) || stations[0];
+                    
+                    currentStationId = melchowStation.id;
+                }
+                
+                // Get departures or arrivals
+                const endpoint = currentMode === 'departures' ? 'departures' : 'arrivals';
+                const response = await fetch(`https://v6.vbb.transport.rest/stops/${currentStationId}/${endpoint}?duration=180&results=15`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Fehler! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const items = currentMode === 'departures' ? data.departures : data.arrivals;
+                
+                if (!items || items.length === 0) {
+                    dataList.innerHTML = `<div class="no-data">Keine ${modeText.toLowerCase()} in den nächsten 3 Stunden geplant.</div>`;
+                    statusElement.innerHTML = `Keine ${modeText.toLowerCase()} in den nächsten 3 Stunden gefunden`;
+                    return;
+                }
+                
+                // Display items
+                dataList.innerHTML = '';
+                currentData = items;
+                
+                items.forEach(item => {
+                    const itemElement = createDepartureItem(item);
+                    dataList.appendChild(itemElement);
+                });
+                
+                statusElement.innerHTML = `✅ ${items.length} ${modeText} von Melchow`;
+                updateLastRefreshTime();
+                
+            } catch (error) {
+                console.error(`Error loading ${currentMode}:`, error);
+                statusElement.innerHTML = `❌ Fehler beim Laden der ${modeText}. Bitte erneut versuchen.`;
+                dataList.innerHTML = `<div class="no-data">Fehler: ${error.message}<br><br>Die App verwendet die VBB (Berlin & Brandenburg) API.<br>Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.</div>`;
+            }
+        }
+        
+        // Function to toggle auto-refresh
+        function toggleAutoRefresh() {
+            const button = document.getElementById('autoRefreshBtn');
+            
+            if (isAutoRefreshOn) {
+                clearInterval(autoRefreshInterval);
+                isAutoRefreshOn = false;
+                button.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    Auto: AUS`;
+                button.classList.remove('active');
+            } else {
+                autoRefreshInterval = setInterval(() => {
+                    refreshData();
+                    updateCurrentTime();
+                }, 60000);
+                isAutoRefreshOn = true;
+                button.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    Auto: EIN`;
+                button.classList.add('active');
+                refreshData();
+            }
+        }
+        
+        // Function to update last refresh time
+        function updateLastRefreshTime() {
+            const lastUpdate = document.getElementById('lastUpdate');
+            const now = new Date();
+            lastUpdate.textContent = `Zuletzt aktualisiert: ${now.toLocaleTimeString('de-DE')}`;
+        }
+        
+        // Scroll event listener for infinite loading
+        function handleScroll() {
+            const container = document.getElementById('dataContainer');
+            const scrollTop = container.scrollTop;
+            const scrollHeight = container.scrollHeight;
+            const clientHeight = container.clientHeight;
+            
+            if (scrollTop + clientHeight >= scrollHeight - 100) {
+                loadMoreData();
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', function() {
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            refreshData();
+            
+            const container = document.getElementById('dataContainer');
+            container.addEventListener('scroll', handleScroll, { passive: true });
         });
     </script>
 </body>
