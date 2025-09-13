@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Departures - Melchow Station</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DB Screen Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #1a237e;
+            min-height: 100vh;
+            color: white;
+            font-weight: 300;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #1a237e;
+            padding: 30px;
+            border-bottom: 3px solid #ffffff20;
+            flex-shrink: 0;
+        }
+        
+        .time-display {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            font-size: 1.8rem;
+            font-weight: 400;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 2px solid white;
+        }
+        
+        .station-name {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 300;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+        
+        .controls {
+            background: #1a237e;
+            padding: 20px 30px;
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid #ffffff20;
+            flex-shrink: 0;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 400;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn.active {
+            background: #dc143c;
+            border-color: #dc143c;
+        }
+        
+        .icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        
+        .status {
+            background: #1a237e;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #ffffff20;
+            flex-shrink: 0;
+        }
+        
+        .departures-container {
+            background: #1a237e;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .departure-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            padding: 25px 30px;
+            border-bottom: 1px solid #ffffff15;
+            transition: background 0.2s ease;
+            align-items: center;
+            gap: 20px;
+            min-height: 80px;
+        }
+        
+        .departure-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .line-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
+        }
+        
+        .line-badge {
+            background: #dc143c;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1rem;
+            min-width: 55px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        
+        .line-badge.s-bahn {
+            background: #4caf50;
+        }
+        
+        .line-badge.regional {
+            background: #2196f3;
+        }
+        
+        .line-badge.bus {
+            background: #9c27b0;
+        }
+        
+        .destination-info {
+            min-width: 0;
+        }
+        
+        .destination {
+            font-size: 2.2rem;
+            font-weight: 300;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .platform-info {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .time-info {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        
+        .departure-time {
+            font-size: 2.8rem;
+            font-weight: 300;
+            line-height: 1;
+        }
+        
+        .time-suffix {
+            font-size: 1.4rem;
+            opacity: 0.8;
+            margin-left: 8px;
+        }
+        
+        .delay-info {
+            font-size: 1.2rem;
+            margin-top: 5px;
+        }
+        
+        .delay-info.on-time {
+            color: #4caf50;
+        }
+        
+        .delay-info.delayed {
+            color: #ff5722;
+            font-weight: 500;
+        }
+        
+        .in-minutes {
+            font-size: 1.8rem;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 80px 30px;
+            font-size: 1.5rem;
+            opacity: 0.7;
+        }
+        
+        .loading-more {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.1rem;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .last-update {
+            background: #1a237e;
+            text-align: center;
+            padding: 20px;
+            opacity: 0.6;
+            font-size: 0.9rem;
+            border-top: 1px solid #ffffff15;
+            flex-shrink: 0;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 15px 20px;
+            }
+            
+            .time-display {
+                position: relative;
+                top: auto;
+                left: auto;
+                font-size: 1.3rem;
+                padding: 6px 12px;
+                margin-bottom: 15px;
+                display: inline-block;
+            }
+            
+            .station-name {
+                font-size: 2rem;
+                margin-top: 10px;
+            }
+            
+            .controls {
+                padding: 12px 20px;
+                gap: 8px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .controls-left {
+                display: flex;
+                gap: 8px;
+                order: 2;
+            }
+            
+            .segmented-control {
+                order: 1;
+                margin-bottom: 10px;
+            }
+            
+            .segment-btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+                flex: 1;
+            }
+            
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                gap: 6px;
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            .icon {
+                width: 14px;
+                height: 14px;
+            }
+            
+            .status {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            
+            .departure-item {
+                grid-template-columns: auto 1fr auto;
+                padding: 10px 15px;
+                gap: 10px;
+                min-height: 60px;
+            }
+            
+            .line-badge {
+                padding: 4px 8px;
+                font-size: 0.8rem;
+                min-width: 40px;
+                border-radius: 15px;
+            }
+            
+            .line-info {
+                gap: 8px;
+            }
+            
+            .destination {
+                font-size: 1.1rem;
+                line-height: 1.2;
+            }
+            
+            .platform-info {
+                font-size: 0.8rem;
+                margin-top: 2px;
+            }
+            
+            .departure-time {
+                font-size: 1.4rem;
+                line-height: 1;
+            }
+            
+            .time-suffix {
+                font-size: 0.8rem;
+                margin-left: 3px;
+            }
+            
+            .delay-info {
+                font-size: 0.8rem;
+                margin-top: 2px;
+            }
+            
+            .in-minutes {
+                font-size: 0.9rem;
+                margin-top: 2px;
+            }
+            
+            .last-update {
+                padding: 12px;
+                font-size: 0.8rem;
+            }
+            
+            .no-data {
+                padding: 40px 20px;
+                font-size: 1.2rem;
+            }
+            
+            .loading-more {
+                padding: 15px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="time-display" id="currentTime">15:09 Uhr</div>
+            <div class="station-name">Melchow</div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="refreshDepartures()">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                </svg>
+                Aktualisieren
+            </button>
+            <button class="btn" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                Auto: AUS
+            </button>
+        </div>
+        
+        <div class="status" id="status">
+            Klicken Sie auf "Aktualisieren" für Live-Abfahrten
+        </div>
+        
+        <div class="departures-container" id="departuresContainer">
+            <div id="departures-list">
+                <div class="no-data">
+                    Noch keine Abfahrtsdaten geladen.<br>Klicken Sie auf "Aktualisieren" für Live-Informationen.
+                </div>
+            </div>
+            <div class="loading-more" id="loadingMore" style="display: none;">
+                <div class="loading"></div>
+                Lade weitere Abfahrten...
+            </div>
+        </div>
+        
+        <div class="last-update" id="lastUpdate"></div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let isAutoRefreshOn = false;
+        let currentDepartures = [];
+        let isLoading = false;
+        let hasMoreData = true;
+        let currentStationId = null;
+        
+        // Update current time display
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('de-DE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                }) + ' Uhr';
+        }
+        
+        // Function to format time
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('de-DE', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+        
+        // Function to calculate minutes until departure
+        function getMinutesUntil(dateString) {
+            const now = new Date();
+            const departure = new Date(dateString);
+            const diffMinutes = Math.round((departure - now) / 60000);
+            return diffMinutes;
+        }
+        
+        // Function to determine line type and color
+        function getLineType(lineName) {
+            if (lineName.startsWith('S')) return 's-bahn';
+            if (lineName.startsWith('RE') || lineName.startsWith('RB')) return 'regional';
+            if (lineName.includes('Bus')) return 'bus';
+            return 'default';
+        }
+        
+        // Function to calculate delay
+        function getDelayInfo(scheduled, realtime) {
+            if (!realtime || !scheduled) {
+                return { text: 'pünktlich', class: 'on-time' };
+            }
+            
+            const scheduledTime = new Date(scheduled);
+            const realtimeTime = new Date(realtime);
+            const delayMinutes = Math.round((realtimeTime - scheduledTime) / 60000);
+            
+            if (delayMinutes <= 0) {
+                return { text: 'pünktlich', class: 'on-time' };
+            } else {
+                return { text: `+${delayMinutes} Min`, class: 'delayed' };
+            }
+        }
+        
+        // Function to create departure item HTML
+        function createDepartureItem(departure) {
+            const delayInfo = getDelayInfo(departure.plannedWhen, departure.when);
+            const destination = departure.destination ? departure.destination.name : 'Unbekannt';
+            const line = departure.line ? departure.line.name : 'Unbekannt';
+            const platform = departure.platform ? `Gleis ${departure.platform}` : '';
+            const time = formatTime(departure.when || departure.plannedWhen);
+            const minutesUntil = getMinutesUntil(departure.when || departure.plannedWhen);
+            const lineType = getLineType(line);
+            
+            const item = document.createElement('div');
+            item.className = 'departure-item';
+            item.innerHTML = `
+                <div class="line-info">
+                    <div class="line-badge ${lineType}">${line}</div>
+                </div>
+                <div class="destination-info">
+                    <div class="destination">${destination}</div>
+                    ${platform ? `<div class="platform-info">${platform}</div>` : ''}
+                </div>
+                <div class="time-info">
+                    <div class="departure-time">${time}<span class="time-suffix">Uhr</span></div>
+                    <div class="delay-info ${delayInfo.class}">${delayInfo.text}</div>
+                    ${minutesUntil > 0 ? `<div class="in-minutes">in ${minutesUntil} Min</div>` : 
+                      minutesUntil === 0 ? `<div class="in-minutes">jetzt</div>` : ''}
+                </div>
+            `;
+            return item;
+        }
+        
+        // Function to load more departures
+        async function loadMoreDepartures() {
+            if (isLoading || !hasMoreData || !currentStationId) return;
+            
+            isLoading = true;
+            const loadingMore = document.getElementById('loadingMore');
+            loadingMore.style.display = 'flex';
+            
+            try {
+                const duration = 360 + (currentDepartures.length * 60); // Extend duration
+                const response = await fetch(`https://v6.vbb.transport.rest/stops/${currentStationId}/departures?duration=${duration}&results=${currentDepartures.length + 10}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Fehler! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.departures && data.departures.length > currentDepartures.length) {
+                    const newDepartures = data.departures.slice(currentDepartures.length);
+                    const departuresList = document.getElementById('departures-list');
+                    
+                    newDepartures.forEach(departure => {
+                        const item = createDepartureItem(departure);
+                        departuresList.appendChild(item);
+                        currentDepartures.push(departure);
+                    });
+                    
+                    if (newDepartures.length < 10) {
+                        hasMoreData = false;
+                    }
+                } else {
+                    hasMoreData = false;
+                }
+                
+            } catch (error) {
+                console.error('Error loading more departures:', error);
+            }
+            
+            isLoading = false;
+            loadingMore.style.display = 'none';
+        }
+        
+        // Function to refresh departures
+        async function refreshDepartures() {
+            const statusElement = document.getElementById('status');
+            const departuresList = document.getElementById('departures-list');
+            
+            statusElement.innerHTML = '<div class="loading"></div>Lade Abfahrten...';
+            currentDepartures = [];
+            hasMoreData = true;
+            
+            try {
+                // Using VBB API (Berlin & Brandenburg) since it covers Melchow area
+                const stationResponse = await fetch(`https://v6.vbb.transport.rest/locations?query=Melchow&results=5`);
+                
+                if (!stationResponse.ok) {
+                    throw new Error('Bahnhof nicht gefunden');
+                }
+                
+                const stations = await stationResponse.json();
+                
+                if (!stations || stations.length === 0) {
+                    throw new Error('Melchow Bahnhof nicht gefunden');
+                }
+                
+                // Find the exact Melchow station
+                const melchowStation = stations.find(station => 
+                    station.name.toLowerCase().includes('melchow')
+                ) || stations[0];
+                
+                currentStationId = melchowStation.id;
+                
+                // Now get departures
+                const response = await fetch(`https://v6.vbb.transport.rest/stops/${currentStationId}/departures?duration=180&results=15`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Fehler! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.departures || data.departures.length === 0) {
+                    departuresList.innerHTML = '<div class="no-data">Keine Abfahrten in den nächsten 3 Stunden geplant.</div>';
+                    statusElement.innerHTML = 'Keine Abfahrten in den nächsten 3 Stunden gefunden';
+                    return;
+                }
+                
+                // Display departures
+                departuresList.innerHTML = '';
+                currentDepartures = data.departures;
+                
+                data.departures.forEach(departure => {
+                    const item = createDepartureItem(departure);
+                    departuresList.appendChild(item);
+                });
+                
+                statusElement.innerHTML = `✅ ${data.departures.length} Abfahrten von ${melchowStation.name}`;
+                updateLastRefreshTime();
+                
+            } catch (error) {
+                console.error('Error loading departures:', error);
+                statusElement.innerHTML = '❌ Fehler beim Laden der Abfahrten. Bitte erneut versuchen.';
+                departuresList.innerHTML = `<div class="no-data">Fehler: ${error.message}<br><br>Die App verwendet die VBB (Berlin & Brandenburg) API.<br>Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.</div>`;
+            }
+        }
+        
+        // Function to toggle auto-refresh
+        function toggleAutoRefresh() {
+            const button = document.getElementById('autoRefreshBtn');
+            
+            if (isAutoRefreshOn) {
+                clearInterval(autoRefreshInterval);
+                isAutoRefreshOn = false;
+                button.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    Auto: AUS`;
+                button.classList.remove('active');
+            } else {
+                autoRefreshInterval = setInterval(() => {
+                    refreshDepartures();
+                    updateCurrentTime();
+                }, 60000);
+                isAutoRefreshOn = true;
+                button.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    Auto: EIN`;
+                button.classList.add('active');
+                refreshDepartures();
+            }
+        }
+        
+        // Function to update last refresh time
+        function updateLastRefreshTime() {
+            const lastUpdate = document.getElementById('lastUpdate');
+            const now = new Date();
+            lastUpdate.textContent = `Zuletzt aktualisiert: ${now.toLocaleTimeString('de-DE')}`;
+        }
+        
+        // Scroll event listener for infinite loading
+        function handleScroll() {
+            const container = document.getElementById('departuresContainer');
+            const scrollTop = container.scrollTop;
+            const scrollHeight = container.scrollHeight;
+            const clientHeight = container.clientHeight;
+            
+            // Load more when user scrolls to bottom 100px
+            if (scrollTop + clientHeight >= scrollHeight - 100) {
+                loadMoreDepartures();
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', function() {
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            refreshDepartures();
+            
+            // Setup infinite scroll using intersection observer (more reliable than scroll events)
+            const { loadingTrigger, observer } = setupInfiniteScroll();
+            window.infiniteScrollObserver = observer;
+            
+            // Also add scroll listener as fallback
+            const container = document.getElementById('departuresContainer');
+            container.addEventListener('scroll', handleScroll, { passive: true });
+            
+            // Add initial loading trigger after first load
+            setTimeout(() => {
+                const departuresList = document.getElementById('departures-list');
+                if (departuresList && !departuresList.querySelector('#loading-trigger')) {
+                    departuresList.appendChild(loadingTrigger);
+                    observer.observe(loadingTrigger);
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
