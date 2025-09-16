@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Departures - Train Station Board</title>
-     <!-- Add Google Fonts -->
+    <!-- Add Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-    <style>
+  
+
         * {
             margin: 0;
             padding: 0;
@@ -1559,7 +1560,7 @@
             currentData = [];
             
             try {
-                // If we don't have station ID, get it first (default to saved station or Melchow)
+                // If we don't have station ID, get it first (default to saved station or Berlin Hbf)
                 if (!currentStationId) {
                     const defaultQuery = userPreferences.selectedStationName;
                     const stationResponse = await fetch(`https://v6.vbb.transport.rest/locations?query=${encodeURIComponent(defaultQuery)}&results=10`);
